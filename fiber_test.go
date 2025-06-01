@@ -54,3 +54,18 @@ func TestCtx(t *testing.T) {
 	bytes, _ = io.ReadAll(response.Body)
 	assert.Equal(t, "Hello Guest", string(bytes))
 }
+
+func TestRouteParameter(t *testing.T) {
+	app.Get("/customers/:customerId/addresses/:addressId", func (ctx *fiber.Ctx) error {
+		return ctx.SendString("Get address " + ctx.Params("addressId") + " from customer " + ctx.Params("customerId"))
+	})
+
+	request := httptest.NewRequest("GET", "/customers/1/addresses/2", nil)
+	response, err := app.Test(request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+
+	bytes, _ := io.ReadAll(response.Body)
+	assert.Equal(t, "Get address 2 from customer 1", string(bytes))
+}
