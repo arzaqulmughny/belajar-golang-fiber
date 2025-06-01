@@ -13,6 +13,11 @@ func main() {
 		ReadTimeout: time.Second * 5,
 	})
 
+	// Routing
+	app.Get("/", func (ctx *fiber.Ctx) error {
+		return ctx.SendString("Hello World!")
+	})
+
 	// Start application
 	err := app.Listen("localhost:3000")
 
