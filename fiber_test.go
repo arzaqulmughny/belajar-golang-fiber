@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -131,4 +132,35 @@ func TestFormUpload(t *testing.T) {
 	assert.Equal(t, "success", string(bytes))
 
 	assert.FileExists(t, "./target/contoh.txt")
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func TestRequestBody(t *testing.T) {
+	app.Post("/login", func(ctx *fiber.Ctx) error {
+		body := ctx.Body()
+
+		request := new(LoginRequest)
+		err := json.Unmarshal(body, &request)
+
+		if err != nil {
+			return err
+		}
+
+		return ctx.SendString("Hello " + request.Username)
+	})
+
+	body := strings.NewReader(`{"username":"Arza"}`)
+	request := httptest.NewRequest("POST", "/login", body)
+	request.Header.Set("Content-Type", "application/json")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "Hello Arza", string(bytes))
 }
