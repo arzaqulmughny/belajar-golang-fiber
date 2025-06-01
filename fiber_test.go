@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"io"
+	"mime/multipart"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -13,8 +16,8 @@ import (
 var app = fiber.New()
 
 func TestRoutingHelloWorld(t *testing.T) {
-	app.Get("/", func (ctx * fiber.Ctx) error {
-		return ctx.SendString("Hello World!");
+	app.Get("/", func(ctx *fiber.Ctx) error {
+		return ctx.SendString("Hello World!")
 	})
 
 	request := httptest.NewRequest("GET", "/", nil)
@@ -29,12 +32,12 @@ func TestRoutingHelloWorld(t *testing.T) {
 }
 
 func TestCtx(t *testing.T) {
-	app.Get("/hello", func (ctx *fiber.Ctx) error {
+	app.Get("/hello", func(ctx *fiber.Ctx) error {
 		name := ctx.Query("name", "Guest")
 
 		return ctx.SendString("Hello " + name)
 	})
-	
+
 	// Send query param
 	request := httptest.NewRequest("GET", "/hello?name=Arza", nil)
 	response, err := app.Test(request)
@@ -57,7 +60,7 @@ func TestCtx(t *testing.T) {
 }
 
 func TestRouteParameter(t *testing.T) {
-	app.Get("/customers/:customerId/addresses/:addressId", func (ctx *fiber.Ctx) error {
+	app.Get("/customers/:customerId/addresses/:addressId", func(ctx *fiber.Ctx) error {
 		return ctx.SendString("Get address " + ctx.Params("addressId") + " from customer " + ctx.Params("customerId"))
 	})
 
@@ -86,4 +89,46 @@ func TestFormRequest(t *testing.T) {
 	bytes, _ := io.ReadAll(response.Body)
 
 	assert.Equal(t, "Hello Arza", string(bytes))
+}
+
+//go:embed source/contoh.txt
+var contohFile []byte
+
+func TestFormUpload(t *testing.T) {
+	app.Post("/upload", func(ctx *fiber.Ctx) error {
+		file, err := ctx.FormFile("file")
+
+		if err != nil {
+			return err
+		}
+
+		// Store file
+		err = ctx.SaveFile(file, "./target/"+file.Filename)
+		if err != nil {
+			return err
+		}
+
+		return ctx.SendString("success")
+	})
+
+	// Creating file
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	file, _ := writer.CreateFormFile("file", "contoh.txt")
+	file.Write(contohFile)
+	writer.Close()
+
+	// Post
+	request := httptest.NewRequest("POST", "/upload", body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := app.Test(request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "success", string(bytes))
+
+	assert.FileExists(t, "./target/contoh.txt")
 }
