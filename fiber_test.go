@@ -198,3 +198,31 @@ func TestResponseJson(t *testing.T) {
 	assert.Equal(t, "Arza", data["name"])
 	assert.Equal(t, "zaarza03@gmail.com", data["email"])
 }
+
+func TestRoutingGroup(t *testing.T) {
+	helloWorld := func(ctx *fiber.Ctx) error {
+		return ctx.SendString("Routing Group!");
+	}
+
+	api := app.Group("/api")
+	api.Get("/hello1", helloWorld)
+
+	web := app.Group("/web")
+	web.Get("/hello2", helloWorld)
+
+	// Test /hello1
+	request1 := httptest.NewRequest("GET", "/api/hello1", nil)
+	response1, _ := app.Test(request1)
+	
+	bytes1, _ := io.ReadAll(response1.Body)
+
+	assert.Equal(t, "Routing Group!", string(bytes1))
+
+	// Test /hello1
+	request2 := httptest.NewRequest("GET", "/web/hello2", nil)
+	response2, _ := app.Test(request2)
+	
+	bytes2, _ := io.ReadAll(response2.Body)
+
+	assert.Equal(t, "Routing Group!", string(bytes2))
+}
