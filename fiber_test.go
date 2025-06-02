@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -163,4 +164,37 @@ func TestRequestBody(t *testing.T) {
 	bytes, err := io.ReadAll(response.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "Hello Arza", string(bytes))
+}
+
+func TestResponseJson(t *testing.T) {
+	app.Get("/users/:userId", func (ctx *fiber.Ctx) error {
+		userId, _ := strconv.Atoi(ctx.Params("userId"))
+
+		return ctx.JSON(fiber.Map{
+			"id": userId,
+			"name": "Arza",
+			"email": "zaarza03@gmail.com",
+		})
+	})
+
+	// Send request
+	request := httptest.NewRequest("GET", "/users/10", nil)
+	response, err := app.Test(request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+
+	// method a
+	// assert.Equal(t, `{"email":"zaarza03@gmail.com","id":10,"name":"Arza"}`, string(bytes))
+
+	// method b
+	var data map[string]interface{}
+	err = json.Unmarshal(bytes, &data)
+
+	assert.Equal(t, float64(10), data["id"])
+	assert.Equal(t, "Arza", data["name"])
+	assert.Equal(t, "zaarza03@gmail.com", data["email"])
 }
