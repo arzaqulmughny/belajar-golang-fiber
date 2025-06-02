@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -248,4 +249,23 @@ func TestErrorHandling(t *testing.T) {
 	bytes, _ := io.ReadAll(response.Body)
 	assert.Equal(t, 500, response.StatusCode)
 	assert.Equal(t, "Terjadi Kesalahan: Ups", string(bytes))
+}
+
+func TestMiddleware(t *testing.T) {
+	app.Use("/prefix", func(ctx *fiber.Ctx) error {
+		fmt.Println("Before processing request");
+		err := ctx.Next()
+		fmt.Println("After processing request");
+		return err
+	})
+
+	app.Get("/prefix/hello", func(ctx *fiber.Ctx) error {
+		return ctx.SendString("Hello")
+	})
+
+	request := httptest.NewRequest("GET", "/prefix/hello", nil)
+	response, _ := app.Test(request)
+	bytes, _ := io.ReadAll(response.Body)
+
+	fmt.Println(string(bytes))
 }
