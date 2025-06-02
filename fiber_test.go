@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http/httptest"
@@ -15,7 +16,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var app = fiber.New()
+var app = fiber.New(fiber.Config{
+	ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+		ctx.Status(fiber.StatusInternalServerError)
+		return ctx.SendString("Terjadi Kesalahan: " + err.Error())
+	},
+})
 
 func TestRoutingHelloWorld(t *testing.T) {
 	app.Get("/", func(ctx *fiber.Ctx) error {
@@ -225,4 +231,21 @@ func TestRoutingGroup(t *testing.T) {
 	bytes2, _ := io.ReadAll(response2.Body)
 
 	assert.Equal(t, "Routing Group!", string(bytes2))
+}
+
+func TestErrorHandling(t *testing.T) {
+	app.Get("/error", func(ctx *fiber.Ctx) error {
+		return errors.New("Ups")
+	})
+
+	request := httptest.NewRequest("GET", "/error", nil)
+	response, err := app.Test(request)
+
+	if err != nil {
+		panic(err)
+	}
+
+	bytes, _ := io.ReadAll(response.Body)
+	assert.Equal(t, 500, response.StatusCode)
+	assert.Equal(t, "Terjadi Kesalahan: Ups", string(bytes))
 }
